@@ -56,8 +56,9 @@ RUN xcaddy build \
 	--output /usr/local/bin/frankenphp \
 	--with github.com/dunglas/frankenphp=./ \
 	--with github.com/dunglas/frankenphp/caddy=./caddy/ \
-	# Mercure ve Vulcain resmi yapıya dahil edilmiştir, ancak bunları kaldırmaktan çekinmeyin
 	--with github.com/dunglas/caddy-cbrotli \
+	--with github.com/dunglas/caddy-cbrotli \
+	# Mercure ve Vulcain resmi yapıya dahil edilmiştir, ancak bunları kaldırmaktan çekinmeyin
 	--with github.com/dunglas/mercure/caddy \
 	--with github.com/dunglas/vulcain/caddy
 	# Buraya ekstra Caddy modülleri ekleyin
@@ -96,9 +97,9 @@ FrankenPHP ile kolayca geliştirme yapmak için, uygulamanın kaynak kodunu içe
 docker run -v $PWD:/app/public -p 80:80 -p 443:443 -p 443:443/udp --tty my-php-app
 ```
 
-> ![İPUCU]
+> [!TIP]
 >
-> `--tty' seçeneği JSON günlükleri yerine insan tarafından okunabilir güzel günlüklere sahip olmayı sağlar.
+> `--tty` seçeneği JSON günlükleri yerine insan tarafından okunabilir güzel günlüklere sahip olmayı sağlar.
 
 Docker Compose ile:
 

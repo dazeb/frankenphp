@@ -28,12 +28,14 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
 	"go.uber.org/zap/zaptest"
 	"go.uber.org/zap/zaptest/observer"
 )
 
 type testOptions struct {
 	workerScript        string
+	watch               []string
 	nbWorkers           int
 	env                 map[string]string
 	nbParrallelRequests int
@@ -59,7 +61,7 @@ func runTest(t *testing.T, test func(func(http.ResponseWriter, *http.Request), *
 
 	initOpts := []frankenphp.Option{frankenphp.WithLogger(opts.logger)}
 	if opts.workerScript != "" {
-		initOpts = append(initOpts, frankenphp.WithWorkers(testDataDir+opts.workerScript, opts.nbWorkers, opts.env))
+		initOpts = append(initOpts, frankenphp.WithWorkers(testDataDir+opts.workerScript, opts.nbWorkers, opts.env, opts.watch))
 	}
 	initOpts = append(initOpts, opts.initOpts...)
 
@@ -246,6 +248,12 @@ func testResponseHeaders(t *testing.T, opts *testOptions) {
 		resp := w.Result()
 		body, _ := io.ReadAll(resp.Body)
 
+		if i%3 != 0 {
+			assert.Equal(t, i+100, resp.StatusCode)
+		} else {
+			assert.Equal(t, 200, resp.StatusCode)
+		}
+
 		assert.Contains(t, string(body), "'X-Powered-By' => 'PH")
 		assert.Contains(t, string(body), "'Foo' => 'bar',")
 		assert.Contains(t, string(body), "'Foo2' => 'bar2',")
@@ -404,7 +412,7 @@ func TestLog_worker(t *testing.T) {
 	testLog(t, &testOptions{workerScript: "log.php"})
 }
 func testLog(t *testing.T, opts *testOptions) {
-	logger, logs := observer.New(zap.InfoLevel)
+	logger, logs := observer.New(zapcore.InfoLevel)
 	opts.logger = zap.New(logger)
 
 	runTest(t, func(handler func(http.ResponseWriter, *http.Request), _ *httptest.Server, i int) {
@@ -424,7 +432,7 @@ func TestConnectionAbort_worker(t *testing.T) {
 func testConnectionAbort(t *testing.T, opts *testOptions) {
 	testFinish := func(finish string) {
 		t.Run(fmt.Sprintf("finish=%s", finish), func(t *testing.T) {
-			logger, logs := observer.New(zap.InfoLevel)
+			logger, logs := observer.New(zapcore.InfoLevel)
 			opts.logger = zap.New(logger)
 
 			runTest(t, func(handler func(http.ResponseWriter, *http.Request), _ *httptest.Server, i int) {
@@ -600,6 +608,18 @@ func testRequestHeaders(t *testing.T, opts *testOptions) {
 		assert.Contains(t, string(body), "[Content-Type] => text/plain")
 		assert.Contains(t, string(body), fmt.Sprintf("[Frankenphp-I] => %d", i))
 	}, opts)
+}
+
+func TestFailingWorker(t *testing.T) {
+	runTest(t, func(handler func(http.ResponseWriter, *http.Request), _ *httptest.Server, i int) {
+		req := httptest.NewRequest("GET", "http://example.com/failing-worker.php", nil)
+		w := httptest.NewRecorder()
+		handler(w, req)
+
+		resp := w.Result()
+		body, _ := io.ReadAll(resp.Body)
+		assert.Contains(t, string(body), "ok")
+	}, &testOptions{workerScript: "failing-worker.php"})
 }
 
 func TestFileUpload_module(t *testing.T) { testFileUpload(t, &testOptions{}) }

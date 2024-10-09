@@ -43,7 +43,7 @@ frankenphp_config frankenphp_get_config();
 int frankenphp_init(int num_threads);
 
 int frankenphp_update_server_context(
-    bool create, uintptr_t current_request, uintptr_t main_request,
+    bool create, bool has_main_request, bool has_active_request,
 
     const char *request_method, char *query_string, zend_long content_length,
     char *path_translated, char *request_uri, const char *content_type,
@@ -55,5 +55,7 @@ void frankenphp_register_bulk_variables(go_string known_variables[27],
                                         size_t size, zval *track_vars_array);
 
 int frankenphp_execute_script_cli(char *script, int argc, char **argv);
+
+int frankenphp_execute_php_function(const char *php_function);
 
 #endif

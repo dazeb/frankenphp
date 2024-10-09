@@ -33,7 +33,7 @@ if [ -z "${PHP_EXTENSIONS}" ]; then
 fi
 
 if [ -z "${PHP_EXTENSION_LIBS}" ]; then
-	export PHP_EXTENSION_LIBS="bzip2,freetype,libavif,libjpeg,liblz4,libwebp,libzip"
+	export PHP_EXTENSION_LIBS="bzip2,freetype,libavif,libjpeg,liblz4,libwebp,libzip,nghttp2"
 fi
 
 # The Brotli library must always be built as it is required by http://github.com/dunglas/caddy-cbrotli
@@ -136,12 +136,22 @@ elif [ "${os}" = "linux" ] && [ -z "${DEBUG_SYMBOLS}" ]; then
 	CGO_LDFLAGS="-Wl,-O1 -pie"
 fi
 
-CGO_LDFLAGS="${CGO_LDFLAGS} ${PWD}/buildroot/lib/libbrotlicommon.a ${PWD}/buildroot/lib/libbrotlienc.a ${PWD}/buildroot/lib/libbrotlidec.a $(./buildroot/bin/php-config --ldflags || true) $(./buildroot/bin/php-config --libs || true)"
+CGO_LDFLAGS="${CGO_LDFLAGS} ${PWD}/buildroot/lib/libbrotlicommon.a ${PWD}/buildroot/lib/libbrotlienc.a ${PWD}/buildroot/lib/libbrotlidec.a $(./buildroot/bin/php-config --ldflags || true) $(./buildroot/bin/php-config --libs | sed -e 's/-lgcc_s//g' || true)"
 if [ "${os}" = "linux" ]; then
 	if echo "${PHP_EXTENSIONS}" | grep -qE "\b(intl|imagick|grpc|v8js|protobuf|mongodb|tbb)\b"; then
 		CGO_LDFLAGS="${CGO_LDFLAGS} -lstdc++"
 	fi
 fi
+
+# install edant/watcher for file watching (static version)
+git clone --branch="${EDANT_WATCHER_VERSION:-next}" https://github.com/e-dant/watcher watcher
+cd watcher/watcher-c
+cc -c -o libwatcher.o ./src/watcher-c.cpp -I ./include -I ../include -std=c++17 -Wall -Wextra -fPIC
+ar rcs libwatcher.a libwatcher.o
+cp libwatcher.a "../../buildroot/lib/libwatcher.a"
+cd ../../
+CGO_LDFLAGS="${CGO_LDFLAGS} -lstdc++ ${PWD}/buildroot/lib/libwatcher.a"
+
 export CGO_LDFLAGS
 
 LIBPHP_VERSION="$(./buildroot/bin/php-config --version)"
@@ -239,7 +249,7 @@ fi
 
 cd caddy/frankenphp/
 go env
-go build -buildmode=pie -tags "cgo netgo osusergo static_build" -ldflags "-linkmode=external -extldflags '-static-pie ${extraExtldflags}' ${extraLdflags} -X 'github.com/caddyserver/caddy/v2.CustomVersion=FrankenPHP ${FRANKENPHP_VERSION} PHP ${LIBPHP_VERSION} Caddy'" -o "../../dist/${bin}"
+go build -buildmode=pie -tags "cgo netgo osusergo static_build brotli watcher" -ldflags "-linkmode=external -extldflags '-static-pie ${extraExtldflags}' ${extraLdflags} -X 'github.com/caddyserver/caddy/v2.CustomVersion=FrankenPHP ${FRANKENPHP_VERSION} PHP ${LIBPHP_VERSION} Caddy'" -o "../../dist/${bin}"
 cd ../..
 
 if [ -d "${EMBED}" ]; then

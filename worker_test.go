@@ -14,6 +14,7 @@ import (
 	"github.com/dunglas/frankenphp"
 	"github.com/stretchr/testify/assert"
 	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
 	"go.uber.org/zap/zaptest/observer"
 )
 
@@ -92,7 +93,7 @@ func TestWorkerEnv(t *testing.T) {
 }
 
 func TestWorkerGetOpt(t *testing.T) {
-	observer, logs := observer.New(zap.InfoLevel)
+	observer, logs := observer.New(zapcore.InfoLevel)
 	logger := zap.New(observer)
 
 	runTest(t, func(handler func(http.ResponseWriter, *http.Request), _ *httptest.Server, i int) {
@@ -116,8 +117,8 @@ func TestWorkerGetOpt(t *testing.T) {
 
 func ExampleServeHTTP_workers() {
 	if err := frankenphp.Init(
-		frankenphp.WithWorkers("worker1.php", 4, map[string]string{"ENV1": "foo"}),
-		frankenphp.WithWorkers("worker2.php", 2, map[string]string{"ENV2": "bar"}),
+		frankenphp.WithWorkers("worker1.php", 4, map[string]string{"ENV1": "foo"}, []string{}),
+		frankenphp.WithWorkers("worker2.php", 2, map[string]string{"ENV2": "bar"}, []string{}),
 	); err != nil {
 		panic(err)
 	}
